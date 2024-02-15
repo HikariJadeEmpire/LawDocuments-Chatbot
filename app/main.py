@@ -1,4 +1,4 @@
-import dash, os, base64
+import dash, os, base64, time
 from dash import Dash, html, dcc
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
@@ -101,9 +101,7 @@ app.layout = dbc.Container([
                                         # className='nav-item dropdown',
                                         id="docs-list",
                                         size="sm",
-                                        toggle_style={
-                                                        "background": "#909497",
-                                                    },
+                                        color="secondary",
                                         style = {'textAlign': 'center',},
                                         ),
                     ],
@@ -117,11 +115,7 @@ app.layout = dbc.Container([
                               'textAlign': 'center',
                               },
                     ),
-            html.P(id="doc-dump",
-                   style={'font-size':8,
-                        'textAlign': 'center',
-                        },
-                    ),
+            dcc.Store(id="doc-dump"),
             html.Br(), html.Br(), html.Br(),
             html.Div([
                         dbc.Button("remove all documents", outline=True, color="danger",
@@ -183,16 +177,13 @@ def remove_docs(click):
 
         doc_check = os.listdir(docs_path)
         if (len(doc_check) < 1) :
-            click = 0
-            status = "All documents has been removed"
-            
-    elif (click == 0) :
-        status = None
+            print("All documents successfully removed.")
+        click = 0
 
     return status, click
 
 @app.callback(
-        Output("doc-dump","children"),
+        Output("doc-dump","data"),
 
         Input('docs-load', 'contents'),
         State('docs-load', 'filename'),
@@ -203,6 +194,7 @@ def upload_to_dir(docs, name):
             data = data.encode("utf8").split(b";base64,")[1]
             with open(os.path.join(docs_path, name), "wb") as fp:
                 fp.write(base64.decodebytes(data))
+        return "uploaded"
 
 @app.callback(
     Output("docs-load-status", "children"),
@@ -210,9 +202,10 @@ def upload_to_dir(docs, name):
     [
         Input('mode', 'value'),
         Input('remove-docs', 'n_clicks'),
+        Input("doc-dump","data"),
      ]
 )
-def upload_status(mode, rm_click):
+def upload_status(mode, rm_click, doc_uploaded):
     
     docs_path.mkdir(parents=True, exist_ok=True)
     doc_check = os.listdir(docs_path)
@@ -226,7 +219,7 @@ def upload_status(mode, rm_click):
                     ]
         status = 'Please upload the documents.'
 
-    elif (len(doc_check) >= 1) and (rm_click == 0) :
+    elif (len(doc_check) >= 1) and (rm_click == 0) or (doc_uploaded == "uploaded") :
         doc_list = []
         for i in doc_check :
             doc_list.append(dbc.DropdownMenuItem(i,
