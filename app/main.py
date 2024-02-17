@@ -3,6 +3,7 @@ from dash import Dash, html, dcc
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 
+from dotenv import load_dotenv, find_dotenv
 import upload
 from pathlib import Path
 
@@ -20,6 +21,34 @@ app = Dash(
 )
 
 app.layout = dbc.Container([
+    dbc.Row([
+        html.Br(),
+        html.Div([
+            html.Small("CHATBOT STATUS",
+                       style = {'textAlign': 'center',
+                                'font-size': 10},
+                                ),
+            dbc.Spinner(
+                html.P("The chatbot currently doesn't have information from documents yet.",
+                   className="text-info",
+                   style={
+                       'textAlign': 'center',
+                        'font-size': 10
+                   },
+                   ),
+                id="status",
+                ),
+                ],
+                 style = {'textAlign': 'center',}
+                 ),
+        html.Br(),
+            ],
+            style={
+            'margin': '10px',
+            'border-radius': '0px',
+            # 'background-color':'rgb(151, 154, 154)',
+            }),
+
     dbc.Row([
         
         ### HEADER ###
@@ -160,6 +189,53 @@ app.layout = dbc.Container([
     # END
 
     ])
+
+@app.callback(
+        Output("status","children"),
+
+        Input("docs-load-status", "children"),
+)
+def chatbot_status_update(doc_status):
+    doc_check = os.listdir(docs_path)
+    if doc_status == "Your documents has been uploaded":
+        if (len(doc_check) >= 1):
+            text = html.P("The chatbot has already obtained the information from the documents.",
+                   className="text-success",
+                   style={
+                       'textAlign': 'center',
+                        'font-size': 10
+                   },
+                   )
+        else :
+            text = html.P("[ RECEIVING DOCUMENTS ERROR ] : It seems like your documents haven't been collected.",
+                    className="text-danger",
+                            style={
+                                'textAlign': 'center',
+                                    'font-size': 10
+                            },
+                            )
+        return text
+    
+    elif doc_status == "Please upload the documents.":
+        if (len(doc_check) < 1):
+            text = html.P("The chatbot currently doesn't have information from documents yet.",
+                   className="text-info",
+                   style={
+                       'textAlign': 'center',
+                        'font-size': 10
+                   },
+                   )
+        else :
+            text = html.P("[ RECEIVING DOCUMENTS ERROR ] : It seems like your documents have been collected.",
+                          className="text-danger",
+                            style={
+                                'textAlign': 'center',
+                                    'font-size': 10
+                            },
+                          )
+        return text
+    else :
+        return dash.no_update
 
 @app.callback(
         Output("docs-remove-status","children"),
