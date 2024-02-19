@@ -4,8 +4,9 @@ import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 
 from dotenv import load_dotenv, find_dotenv
-import upload
 from pathlib import Path
+
+import requests
 
 main_path = Path("main.py").parent
 docs_path = Path(main_path,"..","docs_storage")
@@ -54,7 +55,6 @@ app.layout = dbc.Container([
         ### HEADER ###
 
         dbc.Col([
-            html.Br(), html.Br(),
             html.Div(children=[html.H3(' 📚 Chat! '),
                                html.Small(' with your DOCUMENTS '),
                                html.Br(), html.Br(),
@@ -64,8 +64,33 @@ app.layout = dbc.Container([
                                      className="badge bg-secondary", 
                                      id="model-name")
                                      ], 
-                            style = {'height':'200px','textAlign': 'left',}
+                            style = {'height':'180px','textAlign': 'left',}
                             ),
+            html.Br(),
+            html.Div([
+                dbc.Input(  type="password",
+                            id="huggingface-api",
+                            valid=True,
+                            size="sm",
+                            className="form-control is-invalid",
+                            placeholder="Your Huggingface API",
+                        ),
+                html.Small('You can access the Hugging Face API (READ) from this link (Don\'t worry, it\'s FREE)',
+                           style = {
+                                'font-size': 8
+                                }
+                           ),
+                dcc.Link(   children="Access tokens",
+                            href="https://huggingface.co/settings/tokens",
+                            className="btn btn-link",
+                            refresh=True,
+                            style = {
+                                'font-size': 9
+                                }
+                            ),
+                html.Br(),
+                    ]
+                    ),
             html.Br(), html.Br(),
             html.H6(' MODE '),
             dcc.RadioItems(
@@ -144,7 +169,6 @@ app.layout = dbc.Container([
                               'textAlign': 'center',
                               },
                     ),
-            dcc.Store(id="doc-dump"),
             html.Br(), html.Br(), html.Br(),
             html.Div([
                         dbc.Button("remove all documents", outline=True, color="danger",
@@ -162,7 +186,8 @@ app.layout = dbc.Container([
                             'textAlign': 'center',
                             },
                     ),
-
+            dcc.Store(id="huggingface-api-store"),
+            dcc.Store(id="doc-dump"),
             ], 
             width = 2 ,
             style={
@@ -175,7 +200,47 @@ app.layout = dbc.Container([
         ### CHAT AREA ###
 
         dbc.Col([
-
+                dbc.Row([
+                    dbc.Nav(
+                            [
+                                dbc.NavLink("Models info",
+                                            id="open-model-details",
+                                            active=True,
+                                            href="#",
+                                            n_clicks=0,
+                                            className="nav-link",
+                                            ),
+                            ]
+                        ),
+                    dbc.Popover(
+                                [
+                                    dbc.PopoverHeader("Popover header"),
+                                    dbc.PopoverBody("And here's some amazing content. Cool!"),
+                                ],
+                                id="popover",
+                                is_open=False,
+                                placement="right",
+                                target="open-model-details",
+                            ),
+                    html.Br(),
+                ],
+                ),
+                dbc.Row([
+                    html.Div([
+                        "Chat area"
+                    ])
+                ],
+                style = {
+                    "maxHeight":"400px",
+                    "overflow": "scroll"
+                    },
+                ),
+                dbc.Row([
+                    html.Div([
+                        "Typing area"
+                    ])
+                ]
+                ),
             ],
             width = 9 ,
             style={
@@ -186,9 +251,58 @@ app.layout = dbc.Container([
             ),
     ]),
 
+    ### CHAT AREA END ###
+
+    dbc.Row([
+        html.Br(), html.Br(),
+        html.Div([
+            html.Small("By HikariJadeEmpire",
+                       style = {'textAlign': 'center',
+                                'font-size': 10},
+                                ),
+                ],
+                 style = {'textAlign': 'center',}
+                 ),
+        html.Br(), html.Br(),
+    ],
+
+    ),
+
     # END
 
     ])
+
+@app.callback(
+    Output("popover", "is_open"),
+    [Input("open-model-details", "n_clicks")],
+    [State("popover", "is_open")],
+)
+def toggle_popover(n, is_open):
+    if n:
+        return not is_open
+    return is_open
+
+@app.callback(
+        Output("huggingface-api","className"),
+        Output("huggingface-api-store","data"),
+
+        Input("huggingface-api", "value"),
+
+)
+def huggingface_api_check(huggingface_api):
+    checked = "form-control is-invalid"
+
+    url = 'https://huggingface.co/api/whoami-v2'
+    headers = {'Authorization': "Bearer {token}".format(token=huggingface_api)}
+    r = requests.get(url, headers=headers)
+
+    if r.status_code == 200 :
+        checked = "form-control is-valid"
+        api_passed = huggingface_api
+    else :
+        api_passed = "x"
+
+    return checked, api_passed
 
 @app.callback(
         Output("status","children"),

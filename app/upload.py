@@ -11,7 +11,7 @@ from pathlib import Path
 import json
 
 class LangChainDocLoaders:
-  def __init__(self, pdf_loader):
+  def __init__(self, pdf_loader = "pymupdf"):
     self.supported_doc = ['.pdf', '.csv', '.json', '.jsonl', '.md', '.docx', '.txt', '.html']
     allowed_pdf_loaders = ["pypdf", "pymupdf"]  #Check for pdf_loader type
     if pdf_loader not in allowed_pdf_loaders:
