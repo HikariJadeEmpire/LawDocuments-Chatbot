@@ -9,7 +9,7 @@ from pathlib import Path
 import requests
 import timeit
 
-import m_vector_db
+import m_vector_db, LLM
 
 main_path = Path("main.py").parent
 docs_path = Path(main_path,"..","docs_storage")
@@ -68,16 +68,32 @@ app.layout = dbc.Container([
                                      className="badge bg-secondary", 
                                      id="model-name")
                                      ], 
-                            style = {'height':'180px','textAlign': 'left',}
+                            style = {'height':'150px','textAlign': 'left',}
                             ),
             html.Br(),
             html.Div([
+                html.Small(' Huggingface API KEY ',
+                           style = {'font-size':11}
+                           ),
+                html.Br(),
                 dbc.Input(  type="password",
                             id="huggingface-api",
                             valid=True,
                             size="sm",
                             className="form-control is-invalid",
                             placeholder="Your Huggingface API",
+                        ),
+                html.Br(),
+                html.Small(' OpenAI API KEY ',
+                           style = {'font-size':11}
+                           ),
+                html.Br(),
+                dbc.Input(  type="password",
+                            id="openai-api",
+                            valid=True,
+                            size="sm",
+                            className="form-control is-invalid",
+                            placeholder="Your OpenAI API",
                         ),
                     ]
                     ),
@@ -178,6 +194,7 @@ app.layout = dbc.Container([
                             },
                     ),
             dcc.Store(id="huggingface-api-store"),
+            dcc.Store(id="openai-api-store"),
             dcc.Store(id="doc-dump"),
             ], 
             width = 2 ,
@@ -195,15 +212,22 @@ app.layout = dbc.Container([
                     html.Div([
                         dbc.Nav(
                             [
-                                dbc.NavLink("Fresh start",
+                                dbc.NavLink("MUST READ!",
                                             id="app-details",
                                             active=True,
                                             href="/",
                                             n_clicks=0,
                                             className="nav-link",
                                             ),
-                                dbc.NavLink("Huggingface API",
+                                dbc.NavLink("Huggingface API info",
                                             id="open-hug",
+                                            active=True,
+                                            href="/",
+                                            n_clicks=0,
+                                            className="nav-link",
+                                            ),
+                                dbc.NavLink("OpenAi API info",
+                                            id="open-openai",
                                             active=True,
                                             href="/",
                                             n_clicks=0,
@@ -238,10 +262,23 @@ app.layout = dbc.Container([
                     dbc.Popover(
                                 [
                                     dbc.PopoverHeader("First opening"),
-                                    dbc.PopoverBody("You may experience slow document retrieval,"),
+                                    dbc.PopoverBody("You may experience .. S L O W .. document retrieval,"),
                                     dbc.PopoverBody(
                                         "especially the first time you use the application, due to model downloads.",
+                                         style={'font-size':11},
+                                                    ),
+                                    dbc.PopoverBody(
+                                        "To download models faster, make sure you have a high-speed internet connection.",
+                                         style={'font-size':11},
+                                                    ),
+                                    dbc.PopoverBody(
+                                        "The size of the models is around 10-15 GB, and we use a maximum of 3 models.",
                                          style={'font-size':12},
+                                                    ),
+                                    dbc.PopoverBody("The speed of the chatbot response depends on your PC performance."),
+                                    dbc.PopoverBody(
+                                        "If you use a local LLM, this method DOESN'T require an OpenAI API key but does require high computation power.",
+                                         style={'font-size':11},
                                                     ),
                                 ],
                                 id="popover-start",
@@ -266,7 +303,30 @@ app.layout = dbc.Container([
                     dbc.Popover(
                                 [
                                     dbc.PopoverHeader("Large Language Model (LLM)"),
-                                    dbc.PopoverBody("..."),
+                                    dbc.PopoverBody("OpenAi/ChatGPT-3.5_turbo_0125"),
+                                    dbc.PopoverBody(
+                                        "we are introducing a new GPT-3.5 Turbo model, gpt-3.5-turbo-0125, and for the third time in the past year, we will be decreasing prices on GPT-3.5 Turbo to help our customers scale.",
+                                        style={'font-size':12},
+                                                    ),
+                                    dbc.PopoverBody(
+                                        "Input prices for the new model are reduced by 50% to $0.0005 /1K tokens and output prices are reduced by 25% to $0.0015 /1K tokens. This model will also have various improvements including higher accuracy at responding in requested formats and a fix for a bug which caused a text encoding issue for non-English language function calls.",
+                                        style={'font-size':12},
+                                                    ),
+                                    dbc.PopoverBody(
+                                        dcc.Link(   
+                                            children="More details",
+                                            href="https://platform.openai.com/docs/models/gpt-3-5-turbo",
+                                            className="btn btn-link",
+                                            refresh=True,
+                                            style = {
+                                                'font-size': 12
+                                                }
+                                            )
+                                        ),
+                                    dbc.PopoverBody(
+                                        "Updated on 21/02/2024.",
+                                        style={'font-size':10},
+                                                    ),
                                 ],
                                 id="popover-llm",
                                 is_open=False,
@@ -277,7 +337,13 @@ app.layout = dbc.Container([
                                 [
                                     dbc.PopoverHeader("Huggingface API"),
                                     dbc.PopoverBody(
-                                        'You can access the Hugging Face API (Role : READ) from the link below (Don\'t worry, it\'s FREE)',
+                                        'You can access the Hugging Face API (Role : READ) from the link below',
+                                        style = {
+                                                'font-size': 12
+                                                }
+                                                 ),
+                                    dbc.PopoverBody(
+                                        '(Don\'t worry, it\'s FREE)',
                                         style = {
                                                 'font-size': 12
                                                 }
@@ -299,6 +365,38 @@ app.layout = dbc.Container([
                                 placement="right",
                                 target="open-hug",
                             ),
+                    dbc.Popover(
+                                [
+                                    dbc.PopoverHeader("OpenAi API"),
+                                    dbc.PopoverBody(
+                                        'You can access the OpenAi API from the link below',
+                                        style = {
+                                                'font-size': 12
+                                                }
+                                                 ),
+                                    dbc.PopoverBody(
+                                        'It comes at a cost, but trust me, if you use a free local model, you need to ensure that your PC can handle the computation.',
+                                        style = {
+                                                'font-size': 12
+                                                }
+                                                 ),
+                                    dbc.PopoverBody(
+                                        dcc.Link(   
+                                            children="GET API",
+                                            href="https://platform.openai.com/api-keys",
+                                            className="btn btn-link",
+                                            refresh=True,
+                                            style = {
+                                                'font-size': 12
+                                                }
+                                            )
+                                        ),
+                                ],
+                                id="popover-openai",
+                                is_open=False,
+                                placement="right",
+                                target="open-openai",
+                            ),
                     html.Br(),
                 ],
                 align='center',
@@ -309,6 +407,7 @@ app.layout = dbc.Container([
                 dbc.Row([
                     html.H5(""),
                     dcc.Store(id="chat-stack"),
+                    dcc.Store(id="llm-history"),
                     dcc.Store(id="current-table-name"),
                     dbc.ListGroup(children=[
                             dbc.ListGroupItem([
@@ -444,6 +543,15 @@ def toggle_popover_huggingface(n, is_open):
         return not is_open
     return is_open
 
+@app.callback(
+    Output("popover-openai", "is_open"),
+    [Input("open-openai", "n_clicks")],
+    [State("popover-openai", "is_open")],
+)
+def toggle_popover_huggingface(n, is_open):
+    if n:
+        return not is_open
+    return is_open
 
 @app.callback(
     Output("popover", "is_open"),
@@ -484,6 +592,28 @@ def huggingface_api_check(huggingface_api):
     if r.status_code == 200 :
         checked = "form-control is-valid"
         api_passed = huggingface_api
+    else :
+        api_passed = "x"
+
+    return checked, api_passed
+
+@app.callback(
+        Output("openai-api","className"),
+        Output("openai-api-store","data"),
+
+        Input("openai-api", "value"),
+
+)
+def openai_api_check(openai_api):
+    checked = "form-control is-invalid"
+
+    url = "https://api.openai.com/v1/models/gpt-3.5-turbo-0125"
+    headers = {'Authorization': "Bearer {token}".format(token=openai_api)}
+    r = requests.get(url, headers=headers)
+
+    if r.status_code == 200 :
+        checked = "form-control is-valid"
+        api_passed = openai_api
     else :
         api_passed = "x"
 
@@ -643,6 +773,7 @@ def upload_status(mode, rm_click, doc_uploaded):
 
 @app.callback(
     Output("chat-stack", "data"),
+    Output("llm-history", "data"),
     Output("chat-status", "children"),
     Output('ms-type', 'value'),
 
@@ -651,15 +782,17 @@ def upload_status(mode, rm_click, doc_uploaded):
         Input('ms-sent', 'n_clicks'),
         Input('ms-clear', 'n_clicks'),
         Input("huggingface-api-store","data"),
+        Input("openai-api-store","data"),
         Input("current-table-name","data"),
         Input("status","children"),
         Input("chat-stack", "data"),
+        Input("llm-history", "data"),
 
         State('ms-type', 'value')
      ],
      prevent_initial_call=True
 )
-def chatbox(mode, confirm_message, clear_message, huggingface_valid, table_name, chatbot_status, stack, message):
+def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_valid, table_name, chatbot_status, stack, llm_history, message):
 
     if stack is None:
         stacks = {'user':[], 'chatbot':[], 'time':[], 'distance':[], 'ref':[], 'mode':[]}
@@ -682,20 +815,99 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, table_name,
                 answer = "XXX"
                 ref = (results['documents'][0])[0]
                 distance = (results['distances'][0])[0]
+                recent_llm_history = list()
 
             elif mode == 'CWD':
-                pass
+                start_time = timeit.default_timer()
+                results = mydb.retrieve(query=message, table_name=table_name)
+                retrieve_time = timeit.default_timer() - start_time
+
+                ref = (results['documents'][0])[0]
+                distance = (results['distances'][0])[0]
+
+                if openai_valid != 'x':
+                    prompt = f"""{message}
+                    Please answer using the information from : {ref}
+                    If there's no useful answer, just say "I don't know".
+                    You must answer using the same language as the question.
+                    answer:
+                    """
+                    cb = LLM.start_llm(openai_api_key=openai_valid)
+                    cb_message = {'role':'user', 'content':prompt}
+
+                    if (len(llm_history) > 0) or (llm_history is not None) :
+                        llm_history.append(cb_message)
+                    else :
+                        llm_history = [cb_message]
+
+                    recent_llm_history = llm_history
+                    
+                    start_time = timeit.default_timer()
+                    answer = cb.get_response(messages=recent_llm_history)
+                    time = (timeit.default_timer() - start_time)+retrieve_time
+
+                elif (openai_valid == 'x') or (openai_valid is None) :
+                    answer = "Please ensure that you have correctly filled in the OpenAI API."
+                    time = retrieve_time
+                    recent_llm_history = list()
+
             elif mode == 'CWOD':
-                pass
+                if openai_valid != 'x':
+
+                    cb = LLM.start_llm(openai_api_key=openai_valid)
+                    cb_message = {'role':'user', 'content':message}
+
+                    if (len(llm_history) > 0) or (llm_history is not None) :
+                        llm_history.append(cb_message)
+                    else :
+                        llm_history = [cb_message]
+
+                    recent_llm_history = llm_history
+                    
+                    start_time = timeit.default_timer()
+                    answer = cb.get_response(messages=recent_llm_history)
+                    time = timeit.default_timer() - start_time
+                    ref = "XXX"
+                    distance = "XXX"
+
+                elif (openai_valid == 'x') or (openai_valid is None) :
+                    answer = "Please ensure that you have correctly filled in the OpenAI API."
+                    ref = "XXX"
+                    distance = "XXX"
+                    time = "XXX"
+                    recent_llm_history = list()
+
         elif (huggingface_valid == 'x') or (chatbot_status != "The chatbot has already obtained the information from the documents.") :
             if mode == 'CWOD':
-                pass
+                if openai_valid != 'x':
+                    cb = LLM.start_llm(openai_api_key=openai_valid)
+                    cb_message = {'role':'user', 'content':message}
+
+                    if (len(llm_history) > 0) or (llm_history is not None) :
+                        llm_history.append(cb_message)
+                    else :
+                        llm_history = [cb_message]
+
+                    recent_llm_history = llm_history
+                    
+                    start_time = timeit.default_timer()
+                    answer = cb.get_response(messages=recent_llm_history)
+                    time = timeit.default_timer() - start_time
+                    ref = "XXX"
+                    distance = "XXX"
+                elif (openai_valid == 'x') or (openai_valid is None) :
+                    answer = "Please ensure that you have correctly filled in the OpenAI API."
+                    ref = "XXX"
+                    distance = "XXX"
+                    time = "XXX"
+                    recent_llm_history = list()
             else :
                 ## cannot response without api and table name
                 answer = "Please ensure that you have correctly filled in the Hugging Face API and uploaded the documents."
                 ref = "XXX"
                 distance = "XXX"
                 time = "XXX"
+                recent_llm_history = list()
         
         stacks['user'].append(message)
         stacks['chatbot'].append(answer)
@@ -708,7 +920,7 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, table_name,
                             "number of questions : {A}".format(A=len(stacks['user'])),
                             style={'font-size':11}
                                 )
-        return stacks, ms_process, ""
+        return stacks, recent_llm_history, ms_process, ""
     
     elif clear_message :
         stacks = {'user':[], 'chatbot':[], 'time':[], 'distance':[], 'ref':[], 'mode':[]}
@@ -716,9 +928,11 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, table_name,
                             "number of questions : {A}".format(A=len(stacks['user'])),
                             style={'font-size':11}
                                 )
-        return stacks, ms_process, ""
+        recent_llm_history = list()
+
+        return stacks, recent_llm_history, ms_process, ""
     else :
-        return dash.no_update, dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
 @app.callback(
     Output("chatbox", "children"),

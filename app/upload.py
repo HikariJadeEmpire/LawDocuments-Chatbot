@@ -26,8 +26,8 @@ class LangChainDocLoaders:
     document_path[-1] = path_type.lower()
     document_path = '.'.join(document_path)
 
-    chunk_size = kwargs.get('chunk_size', 400)
-    chunk_overlap = kwargs.get('chunk_overlap', 100)
+    chunk_size = kwargs.get('chunk_size', 800)
+    chunk_overlap = kwargs.get('chunk_overlap', 200)
 
     parent_chunk_size = kwargs.get('parent_chunk_size', 2000)
     parent_chunk_overlap = kwargs.get('parent_chunk_overlap', 0)
