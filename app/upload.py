@@ -32,8 +32,8 @@ class LangChainDocLoaders:
     parent_chunk_size = kwargs.get('parent_chunk_size', 2000)
     parent_chunk_overlap = kwargs.get('parent_chunk_overlap', 0)
 
-    parent_splitter = RecursiveCharacterTextSplitter(chunk_size=parent_chunk_size, chunk_overlap=parent_chunk_overlap) # PUN Added
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap) # PUN Added
+    parent_splitter = RecursiveCharacterTextSplitter(chunk_size=parent_chunk_size, chunk_overlap=parent_chunk_overlap)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
     #Load PDF File.
     if document_path.endswith(".pdf"):
@@ -44,7 +44,7 @@ class LangChainDocLoaders:
         loader = PyMuPDFLoader(document_path)
         original_pages = loader.load()
 
-      pages = text_splitter.split_documents(original_pages) # PUN Added
+      pages = text_splitter.split_documents(original_pages)
       parent_pages = parent_splitter.split_documents(original_pages)
 
       data = [clean(page.page_content) for page in pages]
@@ -103,7 +103,7 @@ class LangChainDocLoaders:
       loader = UnstructuredMarkdownLoader(file_path=document_path)
       original_pages = loader.load()
 
-      pages = text_splitter.split_documents(original_pages) # PUN Added
+      pages = text_splitter.split_documents(original_pages)
       parent_pages = parent_splitter.split_documents(original_pages)
 
       data = [clean(page.page_content) for page in pages]
@@ -116,7 +116,7 @@ class LangChainDocLoaders:
       loader = Docx2txtLoader(file_path=document_path)
       original_pages = loader.load()
 
-      pages = text_splitter.split_documents(original_pages) # PUN Added
+      pages = text_splitter.split_documents(original_pages)
       parent_pages = parent_splitter.split_documents(original_pages)
 
       data = [clean(page.page_content) for page in pages]
@@ -127,11 +127,10 @@ class LangChainDocLoaders:
     #Load txt File.
     elif document_path.endswith(".txt"):
 
-      # PUN Added
       with open(document_path, encoding="UTF-8") as f:
         original_pages = f.read()
 
-      pages = text_splitter.create_documents([original_pages]) # PUN Added
+      pages = text_splitter.create_documents([original_pages])
       parent_pages = parent_splitter.create_documents([original_pages])
 
       data = [clean(page.page_content) for page in pages]
@@ -144,7 +143,7 @@ class LangChainDocLoaders:
       loader = BSHTMLLoader(file_path=document_path)
       original_pages = loader.load()
 
-      pages = text_splitter.split_documents(original_pages) # PUN Added
+      pages = text_splitter.split_documents(original_pages)
       parent_pages = parent_splitter.split_documents(original_pages)
 
       data = [clean(page.page_content) for page in pages]

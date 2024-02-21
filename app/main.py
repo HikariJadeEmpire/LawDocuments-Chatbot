@@ -673,8 +673,13 @@ def chatbot_status_update(doc_status, huggingface_valid, table_name):
             try :
                 if table_name is not None :
                     mydb.remove_db(table_name=table_name)
+                    print(f"\ntable name : {table_name} , has been removed\n")
+                    n = int((table_name.split("-"))[-1])
+                    if n > 0 :
+                        for i in range(n):
+                            mydb.remove_db(table_name=f"Table-{i}")
             except :
-                pass
+                print(f"[ Table name ERROR , line : 682 ] cannot remove Table name : {i}\nTry removing vectors_db folder by yourself.\n")
             
             text = html.P("The chatbot currently doesn't have information from documents yet.",
                    className="text-warning",
@@ -808,24 +813,34 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_vali
         if (huggingface_valid != 'x') and (chatbot_status == "The chatbot has already obtained the information from the documents.") :
             mydb = m_vector_db.vectordb_start(huggingface_api_key=huggingface_valid)
             if mode == 'SD':
-                start_time = timeit.default_timer()
-                results = mydb.retrieve(query=message, table_name=table_name)
-                time = timeit.default_timer() - start_time
+                try :
+                    start_time = timeit.default_timer()
+                    results = mydb.retrieve(query=message, table_name=table_name)
+                    time = timeit.default_timer() - start_time
+                except IndexError as ind :
+                    results = {'documents': [["[ Document ERROR ] : No relevant documents were found. Please check the document file. You may remove the document and upload a correct type of document."]]}
+                    time = "XXX"
+                    print(f"EROR at line 828 >>>> {ind}")
 
                 answer = "XXX"
-                ref = (results['documents'][0])[0]
-                distance = (results['distances'][0])[0]
+                ref = ((results['documents'])[0])[0]
+                distance = ((results['distances'])[0])[0]
                 recent_llm_history = list()
 
             elif mode == 'CWD':
-                start_time = timeit.default_timer()
-                results = mydb.retrieve(query=message, table_name=table_name)
-                retrieve_time = timeit.default_timer() - start_time
+                try :
+                    start_time = timeit.default_timer()
+                    results = mydb.retrieve(query=message, table_name=table_name)
+                    retrieve_time = timeit.default_timer() - start_time
+                except IndexError as ind :
+                    results = {'documents': [["[ Document ERROR ] : No relevant documents were found. Please check the document file. You may remove the document and upload a correct type of document."]]}
+                    retrieve_time = "XXX"
+                    print(f"EROR at line 828 >>>> {ind}")
 
-                ref = (results['documents'][0])[0]
-                distance = (results['distances'][0])[0]
+                ref = ((results['documents'])[0])[0]
+                distance = ((results['distances'])[0])[0]
 
-                if openai_valid != 'x':
+                if (openai_valid != 'x') and (openai_valid is not None) :
                     prompt = f"""{message}
                     Please answer using the information from : {ref}
                     If there's no useful answer, just say "I don't know".
@@ -852,7 +867,7 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_vali
                     recent_llm_history = list()
 
             elif mode == 'CWOD':
-                if openai_valid != 'x':
+                if (openai_valid != 'x') and (openai_valid is not None) :
 
                     cb = LLM.start_llm(openai_api_key=openai_valid)
                     cb_message = {'role':'user', 'content':message}
@@ -879,7 +894,8 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_vali
 
         elif (huggingface_valid == 'x') or (chatbot_status != "The chatbot has already obtained the information from the documents.") :
             if mode == 'CWOD':
-                if openai_valid != 'x':
+                if (openai_valid != 'x') and (openai_valid is not None) :
+
                     cb = LLM.start_llm(openai_api_key=openai_valid)
                     cb_message = {'role':'user', 'content':message}
 

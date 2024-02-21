@@ -1,9 +1,11 @@
 chromadb
 langchain
+pymupdf
+pypdf
+jq
+docx2txt
 
 tiktoken
-pythainlp==5.0.1
-sentence_transformers==2.3.1
 requests
 
 fixthaipdf

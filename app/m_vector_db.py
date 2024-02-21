@@ -30,16 +30,19 @@ class vectordb_start():
             #         os.remove(self.db_path/"vectors_db"/i)
             # os.rmdir(self.db_path/"vectors_db")
 
-            print("Vector database has been removed")
+            print(f"Vector database and Table : {table_name} has been removed\n")
 
 
     def add(self, table_name):
         upload_docs = upload.LangChainDocLoaders(pdf_loader="pymupdf")
+
         collection = self.db.get_or_create_collection(name=table_name, embedding_function=self.huggingface_ef)
+        print(f"\nTable name has been CREATED/GET as : {table_name}")
 
         for file in os.listdir(self.docs_path) :
 
-            file_type = "."+file.split('.')[1]
+            file_type = "."+file.split('.')[-1]
+
             if file_type in upload_docs.supported_doc :
 
                 chunks = upload_docs.load_document(os.path.join(self.docs_path,file))
@@ -47,21 +50,29 @@ class vectordb_start():
 
                 # prepare chunks to be added to collection
 
-                current_data = collection.count()
+                # current_data = collection.count()
+                current_data = 0
 
                 meta = [{"chunk_no":i, "file_type": file_type, "source_name":file} for i in range(len(texts))]
                 idd = ["id{a}".format(a=(i+1)+current_data) for i in range(len(texts))]
 
                 doc_embed = self.huggingface_ef(texts)
-
-                collection.add(
+                
+                try :
+                    collection.add(
                                     embeddings = doc_embed,
                                     documents = texts,
                                     metadatas = meta,
                                     ids = idd
                                 )
+                except :
+                    self.db.delete_collection(name = table_name)
+                    print(f"Table name : {table_name} ERROR\n")
+                    raise TypeError
                 
-                print(F"{file} has been added")
+                print(F"{file} has been added.")
+            else :
+                print(f"The document name : {file} , you provided is not supported.")
 
     def retrieve(self, query, table_name, n_results = 5):
         collection = self.db.get_or_create_collection(name=table_name, embedding_function=self.huggingface_ef)
