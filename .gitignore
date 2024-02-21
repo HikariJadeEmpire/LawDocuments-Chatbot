@@ -1,5 +1,10 @@
 
 app/.env
 app/.DS_Store
+app/__pycache__
+
+docs_storage
+vectors_db
+
 .DS_Store
-*.pyc
+

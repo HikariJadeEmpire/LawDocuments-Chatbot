@@ -41,6 +41,7 @@ app.layout = dbc.Container([
                    },
                    ),
                 id="status",
+                size='sm',
                 ),
                 ],
                  style = {'textAlign': 'center',}
@@ -667,12 +668,13 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, table_name,
 
     if mode is None:
         mode = "XXX"
+    
+    chatbot_status = (chatbot_status['props'])['children']
 
     if confirm_message and (len(message) > 0) :
         if (huggingface_valid != 'x') and (chatbot_status == "The chatbot has already obtained the information from the documents.") :
             mydb = m_vector_db.vectordb_start(huggingface_api_key=huggingface_valid)
             if mode == 'SD':
-
                 start_time = timeit.default_timer()
                 results = mydb.retrieve(query=message, table_name=table_name)
                 time = timeit.default_timer() - start_time
