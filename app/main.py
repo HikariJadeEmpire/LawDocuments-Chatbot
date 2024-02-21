@@ -34,7 +34,7 @@ app.layout = dbc.Container([
                                 ),
             dbc.Spinner(
                 html.P("The chatbot currently doesn't have information from documents yet.",
-                   className="text-info",
+                   className="text-warning",
                    style={
                        'textAlign': 'center',
                         'font-size': 10
@@ -197,28 +197,28 @@ app.layout = dbc.Container([
                                 dbc.NavLink("Fresh start",
                                             id="app-details",
                                             active=True,
-                                            href="#",
+                                            href="/",
                                             n_clicks=0,
                                             className="nav-link",
                                             ),
                                 dbc.NavLink("Huggingface API",
                                             id="open-hug",
                                             active=True,
-                                            href="#",
+                                            href="/",
                                             n_clicks=0,
                                             className="nav-link",
                                             ),
                                 dbc.NavLink("LLM info",
                                             id="open-llm-details",
                                             active=True,
-                                            href="#",
+                                            href="/",
                                             n_clicks=0,
                                             className="nav-link",
                                             ),
                                 dbc.NavLink("Embedding model info",
                                             id="open-model-details",
                                             active=True,
-                                            href="#",
+                                            href="/",
                                             n_clicks=0,
                                             className="nav-link",
                                             ),
@@ -345,6 +345,7 @@ app.layout = dbc.Container([
                         },
                 ),
                 dbc.Row([
+                    html.H3(""),
                     html.Br(),
                     html.Div([
                         dbc.Spinner(
@@ -498,7 +499,7 @@ def huggingface_api_check(huggingface_api):
 def chatbot_status_update(doc_status, huggingface_valid, table_name):
     doc_check = os.listdir(docs_path)
     t_name = [f"Table-{i}" for i in range(999)]
-    if doc_status == "Your documents has been uploaded":
+    if doc_status == "Your documents has been uploaded" and (huggingface_valid is not None) :
         if (len(doc_check) >= 1) and (huggingface_valid != 'x'):
 
             mydb = m_vector_db.vectordb_start(huggingface_api_key=huggingface_valid)
@@ -527,10 +528,10 @@ def chatbot_status_update(doc_status, huggingface_valid, table_name):
             
         return text, t_name[0]
     
-    elif doc_status == "Please upload the documents.":
+    elif doc_status == "Please upload the documents." and (huggingface_valid is not None) :
         if (len(doc_check) < 1) and (huggingface_valid == 'x'):
             text = html.P("The chatbot currently doesn't have information from documents yet. Please check your huggingface API",
-                   className="text-info",
+                   className="text-warning",
                    style={
                        'textAlign': 'center',
                         'font-size': 10
@@ -545,7 +546,7 @@ def chatbot_status_update(doc_status, huggingface_valid, table_name):
                 pass
             
             text = html.P("The chatbot currently doesn't have information from documents yet.",
-                   className="text-info",
+                   className="text-warning",
                    style={
                        'textAlign': 'center',
                         'font-size': 10
@@ -642,21 +643,32 @@ def upload_status(mode, rm_click, doc_uploaded):
 @app.callback(
     Output("chat-stack", "data"),
     Output("chat-status", "children"),
+    Output('ms-type', 'value'),
+
     [
         Input('mode', 'value'),
-        Input('ms-type', 'value'),
         Input('ms-sent', 'n_clicks'),
         Input('ms-clear', 'n_clicks'),
         Input("huggingface-api-store","data"),
         Input("current-table-name","data"),
         Input("status","children"),
-     ]
+        Input("chat-stack", "data"),
+
+        State('ms-type', 'value')
+     ],
+     prevent_initial_call=True
 )
-def chatbox(mode, message, confirm_message, clear_message, huggingface_valid, table_name, chatbot_status):
+def chatbox(mode, confirm_message, clear_message, huggingface_valid, table_name, chatbot_status, stack, message):
 
-    stacks = {'user':[], 'chatbot':[], 'time':[], 'distance':[], 'ref':[]}
+    if stack is None:
+        stacks = {'user':[], 'chatbot':[], 'time':[], 'distance':[], 'ref':[], 'mode':[]}
+    else :
+        stacks = stack
 
-    if confirm_message and (message is not None) :
+    if mode is None:
+        mode = "XXX"
+
+    if confirm_message and (len(message) > 0) :
         if (huggingface_valid != 'x') and (chatbot_status == "The chatbot has already obtained the information from the documents.") :
             mydb = m_vector_db.vectordb_start(huggingface_api_key=huggingface_valid)
             if mode == 'SD':
@@ -688,38 +700,39 @@ def chatbox(mode, message, confirm_message, clear_message, huggingface_valid, ta
         stacks['time'].append(time)
         stacks['distance'].append(distance)
         stacks['ref'].append(ref)
+        stacks['mode'].append(mode)
 
         ms_process = html.P(
-                            "number of questions : {A}".format(A=len(stacks.items())),
+                            "number of questions : {A}".format(A=len(stacks['user'])),
                             style={'font-size':11}
                                 )
-        return stacks, ms_process
+        return stacks, ms_process, ""
     
     elif clear_message :
-        stacks = dict()
+        stacks = {'user':[], 'chatbot':[], 'time':[], 'distance':[], 'ref':[], 'mode':[]}
         ms_process = html.P(
-                            "number of questions : {A}".format(A=len(stacks.items())),
+                            "number of questions : {A}".format(A=len(stacks['user'])),
                             style={'font-size':11}
                                 )
-        return stacks, ms_process
+        return stacks, ms_process, ""
     else :
-        return dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update
 
 @app.callback(
     Output("chatbox", "children"),
     [
         Input("chat-stack", "data"),
-        Input('mode', 'value'),
         Input('ms-sent', 'n_clicks'),
+        Input('ms-clear', 'n_clicks'),
     ]
     )
-def update_chatbox(stacks, mode, sent_ms):
+def update_chatbox(stacks, sent_ms, clear_ms):
     docr = ["CWD","SD"]
 
     final_stacks = []
 
-    if sent_ms :
-        for user,chatbot,time,distance,ref in zip(stacks['user'],stacks['chatbot'],stacks['time'],stacks['distance'],stacks['ref']):
+    if sent_ms or clear_ms :
+        for user,chatbot,time,distance,ref,mode in zip(stacks['user'],stacks['chatbot'],stacks['time'],stacks['distance'],stacks['ref'],stacks['mode']):
 
             chatbot_area = [html.Div("SATURDAY", className="badge rounded-pill bg-success")]
             user_area = [html.Div("USER", className="badge rounded-pill bg-info")]
@@ -753,16 +766,6 @@ def update_chatbox(stacks, mode, sent_ms):
 
             stack_chat = [
                             dbc.ListGroupItem(
-                                chatbot_area,
-                                style={
-                                    'textAlign':'left',
-                                    'font-size':15,
-                                    'border-top-left-radius':'10px',
-                                    'border-top-right-radius':'10px',
-                                    'border-bottom-right-radius':'10px',
-                                    },
-                                    ),
-                            dbc.ListGroupItem(
                                 user_area,
                                 style={
                                     'textAlign':'right',
@@ -771,6 +774,16 @@ def update_chatbox(stacks, mode, sent_ms):
                                     'border-top-right-radius':'10px',
                                     'border-bottom-left-radius':'10px',
                                     }
+                                    ),
+                            dbc.ListGroupItem(
+                                chatbot_area,
+                                style={
+                                    'textAlign':'left',
+                                    'font-size':15,
+                                    'border-top-left-radius':'10px',
+                                    'border-top-right-radius':'10px',
+                                    'border-bottom-right-radius':'10px',
+                                    },
                                     ),
                         ]
             final_stacks.extend(stack_chat)
