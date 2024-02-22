@@ -19,7 +19,7 @@ class vectordb_start():
                                         )
 
     def remove_db(self, table_name):
-        db_check = os.listdir(self.db_path/"vectors_db")
+        # db_check = os.listdir(self.db_path/"vectors_db")
 
         if os.path.exists(self.db_path/"vectors_db"):
             self.db.delete_collection(name = table_name)
@@ -50,8 +50,7 @@ class vectordb_start():
 
                 # prepare chunks to be added to collection
 
-                # current_data = collection.count()
-                current_data = 0
+                current_data = collection.count()
 
                 meta = [{"chunk_no":i, "file_type": file_type, "source_name":file} for i in range(len(texts))]
                 idd = ["id{a}".format(a=(i+1)+current_data) for i in range(len(texts))]

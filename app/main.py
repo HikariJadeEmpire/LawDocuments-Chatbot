@@ -14,6 +14,9 @@ import m_vector_db, LLM
 main_path = Path("main.py").parent
 docs_path = Path(main_path,"..","docs_storage")
 
+embed_model = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
+# embed_model = 'kornwtp/simcse-model-phayathaibert'
+
 app = Dash(
     title='DocsChat',
     name='DocsChat',
@@ -68,7 +71,7 @@ app.layout = dbc.Container([
                                      className="badge bg-secondary", 
                                      id="model-name")
                                      ], 
-                            style = {'height':'150px','textAlign': 'left',}
+                            style = {'height':'130px','textAlign': 'left',}
                             ),
             html.Br(),
             html.Div([
@@ -131,6 +134,16 @@ app.layout = dbc.Container([
                 labelStyle={"display": "flex", "align-items": "center"},
             ),
             html.Br(), html.Br(),
+            dbc.Checklist(
+                            options=[
+                                {"label": "Rerank documents after retrieval", "value": 1},
+                                {"label": "Use embedding model by OpenAI", "value": 2, "disabled": True},
+                            ],
+                            value=[],
+                            id="switch",
+                            switch=True,
+                            style = {'height':'140px','textAlign': 'left'}
+                        ),
             html.Small(' Supported documents : ',
                        style={'font-size':11},
                        ), html.Br(),
@@ -142,6 +155,8 @@ app.layout = dbc.Container([
                     dbc.Button(
                             " UPLOAD files ", outline=True, color="secondary", className="btn btn-outline-secondary",
                             value = None,
+                            n_clicks=0,
+                            id="upload-click",
                             style = {'font-size': 16}
                             ),
                     id='docs-load',
@@ -195,7 +210,7 @@ app.layout = dbc.Container([
                     ),
             dcc.Store(id="huggingface-api-store"),
             dcc.Store(id="openai-api-store"),
-            dcc.Store(id="doc-dump"),
+            dcc.Store(id="doc-dump", clear_data=False),
             ], 
             width = 2 ,
             style={
@@ -439,9 +454,10 @@ app.layout = dbc.Container([
                         ),
                     ],
                     style = {
-                        'height':'650px',
-                        "maxHeight":"650px",
-                        "overflow": "scroll"
+                        'height':'750px',
+                        "maxHeight":"750px",
+                        "overflow-y": "auto",
+                        "overflow-x": "hidden",
                         },
                 ),
                 dbc.Row([
@@ -625,15 +641,17 @@ def openai_api_check(openai_api):
 
         Input("docs-load-status", "children"),
         Input("huggingface-api-store","data"),
-        Input("current-table-name","data"),
+
+        State("current-table-name","data"),
 )
 def chatbot_status_update(doc_status, huggingface_valid, table_name):
     doc_check = os.listdir(docs_path)
     t_name = [f"Table-{i}" for i in range(999)]
     if doc_status == "Your documents has been uploaded" and (huggingface_valid is not None) :
+        print(f"[ line 640 ] everything looks fine , current table_name on mem : {table_name}")
         if (len(doc_check) >= 1) and (huggingface_valid != 'x'):
 
-            mydb = m_vector_db.vectordb_start(huggingface_api_key=huggingface_valid)
+            mydb = m_vector_db.vectordb_start(huggingface_api_key=huggingface_valid, embed_model_name=embed_model)
 
             try :
                 mydb.add(table_name=t_name[0])
@@ -648,8 +666,8 @@ def chatbot_status_update(doc_status, huggingface_valid, table_name):
                         'font-size': 10
                    },
                    )
-        else :
-            text = html.P("[ RECEIVING DOCUMENTS ERROR ] : It seems like your documents haven't been collected. Please check your huggingface API",
+        elif (len(doc_check) < 1) and (huggingface_valid != 'x') :
+            text = html.P("[ RECEIVING DOCUMENTS ERROR , line 656 ] : It seems like your documents haven't been collected. Please check your huggingface API",
                     className="text-danger",
                             style={
                                 'textAlign': 'center',
@@ -669,17 +687,6 @@ def chatbot_status_update(doc_status, huggingface_valid, table_name):
                    },
                    )
         elif (len(doc_check) < 1) and (huggingface_valid != 'x'):
-            mydb = m_vector_db.vectordb_start(huggingface_api_key=huggingface_valid)
-            try :
-                if table_name is not None :
-                    mydb.remove_db(table_name=table_name)
-                    print(f"\ntable name : {table_name} , has been removed\n")
-                    n = int((table_name.split("-"))[-1])
-                    if n > 0 :
-                        for i in range(n):
-                            mydb.remove_db(table_name=f"Table-{i}")
-            except :
-                print(f"[ Table name ERROR , line : 682 ] cannot remove Table name : {i}\nTry removing vectors_db folder by yourself.\n")
             
             text = html.P("The chatbot currently doesn't have information from documents yet.",
                    className="text-warning",
@@ -689,7 +696,7 @@ def chatbot_status_update(doc_status, huggingface_valid, table_name):
                    },
                    )
         else :
-            text = html.P("[ RECEIVING DOCUMENTS ERROR ] : It seems like your documents have been collected.",
+            text = html.P("[ RECEIVING DOCUMENTS ERROR , line 696 ] : It seems like your documents have been collected.",
                           className="text-danger",
                             style={
                                 'textAlign': 'center',
@@ -704,13 +711,27 @@ def chatbot_status_update(doc_status, huggingface_valid, table_name):
 @app.callback(
         Output("docs-remove-status","children"),
         Output('remove-docs', 'n_clicks'),
+        Output('doc-dump','clear_data'),
 
+        Input("huggingface-api-store","data"),
         Input('remove-docs', 'n_clicks'),
+
+        State('doc-dump', 'data'),
+        State("current-table-name","data"),
 )
-def remove_docs(click):
+def remove_docs(huggingface_valid, click, upload, table_name):
     status = None
+    reset = False
     doc_check = os.listdir(docs_path)
-    if (click >= 1) :
+
+    if (huggingface_valid != 'x') and (table_name is not None) :
+        mydb = m_vector_db.vectordb_start(huggingface_api_key=huggingface_valid, embed_model_name=embed_model)
+        mydb.remove_db(table_name=table_name)
+        print("\nThe vector database has been successfully removed.")
+    else :
+        print("\nPlease remove \"vectors_db\" folder by yourself.\n")
+
+    if (click >= 1) and ((upload == "uploaded") or (upload is None)) :
         for  i in doc_check :
             if os.path.exists(docs_path/i):
                 os.remove(docs_path/i)
@@ -718,23 +739,33 @@ def remove_docs(click):
         doc_check = os.listdir(docs_path)
         if (len(doc_check) < 1) :
             print("All documents successfully removed.")
-        click = 0
+        reset = True
+    
+    click = 0
 
-    return status, click
+    return status, click, reset
 
 @app.callback(
         Output("doc-dump","data"),
+        Output('upload-click','n_clicks'),
+        Output('docs-load', 'contents'),
+        Output('docs-load', 'filename'),
 
+        Input('upload-click','n_clicks'),
         Input('docs-load', 'contents'),
         State('docs-load', 'filename'),
 )
-def upload_to_dir(docs, name):
-    if docs is not None :
-        for name, data in zip(name, docs):
-            data = data.encode("utf8").split(b";base64,")[1]
-            with open(os.path.join(docs_path, name), "wb") as fp:
-                fp.write(base64.decodebytes(data))
-        return "uploaded"
+def upload_to_dir(upload_click, docs, name):
+    if upload_click :
+        count = 0
+        while (docs is None) or (docs == "") :
+            count += 1
+        if (docs is not None) or (docs != "") :
+            for name, data in zip(name, docs):
+                data = data.encode("utf8").split(b";base64,")[1]
+                with open(os.path.join(docs_path, name), "wb") as fp:
+                    fp.write(base64.decodebytes(data))
+            return "uploaded", 0, "", ""
 
 @app.callback(
     Output("docs-load-status", "children"),
@@ -742,15 +773,15 @@ def upload_to_dir(docs, name):
     [
         Input('mode', 'value'),
         Input('remove-docs', 'n_clicks'),
-        Input("doc-dump","data"),
+        Input('doc-dump','data'),
      ]
 )
-def upload_status(mode, rm_click, doc_uploaded):
+def upload_status(mode, rm_click, docdump):
     
     docs_path.mkdir(parents=True, exist_ok=True)
     doc_check = os.listdir(docs_path)
     
-    if (len(doc_check) < 1) or (rm_click >= 1) :
+    if (len(doc_check) < 1) or rm_click :
         doc_list = [dbc.DropdownMenuItem('empty',
                                         className="text-body-tertiary",
                                         style = {'textAlign': 'center',
@@ -759,7 +790,7 @@ def upload_status(mode, rm_click, doc_uploaded):
                     ]
         status = 'Please upload the documents.'
 
-    elif (len(doc_check) >= 1) and (rm_click == 0) or (doc_uploaded == "uploaded") :
+    elif (len(doc_check) >= 1) or (docdump == 'uploaded') :
         doc_list = []
         for i in doc_check :
             doc_list.append(dbc.DropdownMenuItem(i,
@@ -792,12 +823,13 @@ def upload_status(mode, rm_click, doc_uploaded):
         Input("status","children"),
         Input("chat-stack", "data"),
         Input("llm-history", "data"),
+        Input('switch','value'),
 
         State('ms-type', 'value')
      ],
      prevent_initial_call=True
 )
-def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_valid, table_name, chatbot_status, stack, llm_history, message):
+def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_valid, table_name, chatbot_status, stack, llm_history, switch, message):
 
     if stack is None:
         stacks = {'user':[], 'chatbot':[], 'time':[], 'distance':[], 'ref':[], 'mode':[]}
@@ -811,7 +843,7 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_vali
 
     if confirm_message and (len(message) > 0) :
         if (huggingface_valid != 'x') and (chatbot_status == "The chatbot has already obtained the information from the documents.") :
-            mydb = m_vector_db.vectordb_start(huggingface_api_key=huggingface_valid)
+            mydb = m_vector_db.vectordb_start(huggingface_api_key=huggingface_valid, embed_model_name=embed_model)
             if mode == 'SD':
                 try :
                     start_time = timeit.default_timer()
@@ -842,7 +874,7 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_vali
 
                 if (openai_valid != 'x') and (openai_valid is not None) :
                     prompt = f"""{message}
-                    Please answer using the information from : {ref}
+                    Please answer the question above using the information from : {ref}
                     If there's no useful answer, just say "I don't know".
                     You must answer using the same language as the question.
                     answer:
@@ -983,7 +1015,7 @@ def update_chatbox(stacks, sent_ms, clear_ms):
                 chatbot_area.extend([
                             html.Div("INFO", className="badge rounded-pill bg-light"),
                             html.P(f"REFERENCE : {ref}"),
-                            html.P(f"RETRIEVAL TIME : {time}")
+                            html.P(f"RESPONSE TIME : {time}")
                             ])
             elif mode not in docr :
                 for i in chatbot.split("\n"):
