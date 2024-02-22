@@ -852,7 +852,7 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_vali
                 except IndexError as ind :
                     results = {'documents': [["[ Document ERROR ] : No relevant documents were found. Please check the document file. You may remove the document and upload a correct type of document."]]}
                     time = "XXX"
-                    print(f"EROR at line 828 >>>> {ind}")
+                    print(f"EROR at line 855 >>>> {ind}")
 
                 answer = "XXX"
                 ref = ((results['documents'])[0])[0]
@@ -867,7 +867,7 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_vali
                 except IndexError as ind :
                     results = {'documents': [["[ Document ERROR ] : No relevant documents were found. Please check the document file. You may remove the document and upload a correct type of document."]]}
                     retrieve_time = "XXX"
-                    print(f"EROR at line 828 >>>> {ind}")
+                    print(f"EROR at line 870 >>>> {ind}")
 
                 ref = ((results['documents'])[0])[0]
                 distance = ((results['distances'])[0])[0]

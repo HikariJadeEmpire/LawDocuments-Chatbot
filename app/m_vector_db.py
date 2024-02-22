@@ -1,6 +1,7 @@
 import os, shutil
 import chromadb
 import chromadb.utils.embedding_functions as embedding_functions
+from sentence_transformers import SentenceTransformer, util
 
 from pathlib import Path
 
@@ -17,8 +18,9 @@ class vectordb_start():
                                                 api_key=huggingface_api_key,
                                                 model_name=embed_model_name
                                         )
+        self.embed_model = SentenceTransformer(embed_model_name)
 
-    def remove_db(self, table_name):
+    def remove_db(self, table_name) -> None:
         # db_check = os.listdir(self.db_path/"vectors_db")
 
         if os.path.exists(self.db_path/"vectors_db"):
@@ -33,7 +35,7 @@ class vectordb_start():
             print(f"Vector database and Table : {table_name} has been removed\n")
 
 
-    def add(self, table_name):
+    def add(self, table_name) -> None:
         upload_docs = upload.LangChainDocLoaders(pdf_loader="pymupdf")
 
         collection = self.db.get_or_create_collection(name=table_name, embedding_function=self.huggingface_ef)
@@ -73,7 +75,7 @@ class vectordb_start():
             else :
                 print(f"The document name : {file} , you provided is not supported.")
 
-    def retrieve(self, query, table_name, n_results = 5):
+    def retrieve(self, query, table_name, n_results = 5) -> dict :
         collection = self.db.get_or_create_collection(name=table_name, embedding_function=self.huggingface_ef)
         results = collection.query(
                                         query_texts=query,
@@ -81,3 +83,41 @@ class vectordb_start():
                                     )
 
         return results
+    
+    def retrieve_rerank(self, query, table_name, n_results = 15) -> str:
+        collection = self.db.get_or_create_collection(name=table_name, embedding_function=self.huggingface_ef)
+        current_data = collection.count()
+
+        if (n_results <= current_data) :
+            results = collection.query(
+                                        query_texts=query,
+                                        n_results=n_results
+                                    )
+            docs = ((results['documents'])[0])[:n_results]
+
+            # Compute embedding for both lists
+            question = self.embed_model.encode([query], convert_to_tensor=True)
+            docs_vector = self.embed_model.encode(docs, convert_to_tensor=True)
+
+            # Compute cosine-similarities
+            cosine_scores = util.cos_sim(question, docs_vector)
+
+            # Output the pairs with their score
+            see = {'q':[], 'a':[], 'score':[]}
+            for i in range(len(question)):
+                for j in range(len(docs_vector)):
+                    see['q'].append(question[i])
+                    see['a'].append(docs_vector[j])
+                    see['score'].append( float(cosine_scores[i][j]) )
+
+            # Get the most relevant doc
+            
+            for i in see['score']:
+                if i == float(cosine_scores.max()):
+                    retrieve_doc = see['score'].index(i)
+            most_relevant_doc = (see['a'])[retrieve_doc]
+
+            return most_relevant_doc
+        else :
+            print("\nThe number of results has exceeded the maximum limit.\n")
+            raise ValueError
