@@ -84,9 +84,12 @@ class vectordb_start():
 
         return results
     
-    def retrieve_rerank(self, query, table_name, n_results = 15) -> str:
+    def retrieve_rerank(self, query, table_name, n_results = 30) -> dict:
         collection = self.db.get_or_create_collection(name=table_name, embedding_function=self.huggingface_ef)
         current_data = collection.count()
+
+        while (n_results >= current_data) :
+            n_results -= 2
 
         if (n_results <= current_data) :
             results = collection.query(
@@ -106,8 +109,8 @@ class vectordb_start():
             see = {'q':[], 'a':[], 'score':[]}
             for i in range(len(question)):
                 for j in range(len(docs_vector)):
-                    see['q'].append(question[i])
-                    see['a'].append(docs_vector[j])
+                    see['q'].append(query)
+                    see['a'].append(docs[j])
                     see['score'].append( float(cosine_scores[i][j]) )
 
             # Get the most relevant doc
@@ -117,7 +120,9 @@ class vectordb_start():
                     retrieve_doc = see['score'].index(i)
             most_relevant_doc = (see['a'])[retrieve_doc]
 
-            return most_relevant_doc
+            results = {'doc':most_relevant_doc, 'score':float(cosine_scores.max())}
+
+            return results
         else :
             print("\nThe number of results has exceeded the maximum limit.\n")
             raise ValueError

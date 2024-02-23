@@ -1,4 +1,4 @@
-import dash, os, base64
+import dash, os, base64, time
 from dash import Dash, html, dcc
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
@@ -14,8 +14,8 @@ import m_vector_db, LLM
 main_path = Path("main.py").parent
 docs_path = Path(main_path,"..","docs_storage")
 
-embed_model = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
-# embed_model = 'kornwtp/simcse-model-phayathaibert'
+# embed_model = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
+embed_model = 'intfloat/multilingual-e5-large'
 
 app = Dash(
     title='DocsChat',
@@ -241,7 +241,7 @@ app.layout = dbc.Container([
                                             n_clicks=0,
                                             className="nav-link",
                                             ),
-                                dbc.NavLink("OpenAi API info",
+                                dbc.NavLink("OpenAI API info",
                                             id="open-openai",
                                             active=True,
                                             href="/",
@@ -287,7 +287,7 @@ app.layout = dbc.Container([
                                          style={'font-size':11},
                                                     ),
                                     dbc.PopoverBody(
-                                        "The size of the models is around 10-15 GB, and we use a maximum of 3 models.",
+                                        "The size of the models is around 3-15 GB, and we use a maximum of 2 models.",
                                          style={'font-size':12},
                                                     ),
                                     dbc.PopoverBody("The speed of the chatbot response depends on your PC performance."),
@@ -304,7 +304,7 @@ app.layout = dbc.Container([
                     dbc.Popover(
                                 [
                                     dbc.PopoverHeader("Embeddings"),
-                                    dbc.PopoverBody("sentence-transformers/paraphrase-multilingual-mpnet-base-v2"),
+                                    dbc.PopoverBody(embed_model),
                                     dbc.PopoverBody(
                                         "model is utilized for document retrieval purposes.",
                                         style={'font-size':12},
@@ -382,9 +382,9 @@ app.layout = dbc.Container([
                             ),
                     dbc.Popover(
                                 [
-                                    dbc.PopoverHeader("OpenAi API"),
+                                    dbc.PopoverHeader("OpenAI API"),
                                     dbc.PopoverBody(
-                                        'You can access the OpenAi API from the link below',
+                                        'You can access the OpenAI API from the link below',
                                         style = {
                                                 'font-size': 12
                                                 }
@@ -758,8 +758,10 @@ def remove_docs(huggingface_valid, click, upload, table_name):
 def upload_to_dir(upload_click, docs, name):
     if upload_click :
         count = 0
-        while (docs is None) or (docs == "") :
+        while ((docs is None) or (docs == "")) :
             count += 1
+            time.sleep(10)
+
         if (docs is not None) or (docs != "") :
             for name, data in zip(name, docs):
                 data = data.encode("utf8").split(b";base64,")[1]
@@ -832,7 +834,7 @@ def upload_status(mode, rm_click, docdump):
 def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_valid, table_name, chatbot_status, stack, llm_history, switch, message):
 
     if stack is None:
-        stacks = {'user':[], 'chatbot':[], 'time':[], 'distance':[], 'ref':[], 'mode':[]}
+        stacks = {'user':[], 'chatbot':[], 'time':[], 'distance':[], 'ref':[], 'mode':[], 'rerank_similarity':[]}
     else :
         stacks = stack
 
@@ -845,32 +847,57 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_vali
         if (huggingface_valid != 'x') and (chatbot_status == "The chatbot has already obtained the information from the documents.") :
             mydb = m_vector_db.vectordb_start(huggingface_api_key=huggingface_valid, embed_model_name=embed_model)
             if mode == 'SD':
-                try :
+
+                dont_rerank = True
+                if len(switch)>=1 :
+                    for i in switch:
+                        if i == 1 :
+                            dont_rerank = False
+
+                            start_time = timeit.default_timer()
+                            results = mydb.retrieve_rerank(query=message, table_name=table_name)
+                            time = timeit.default_timer() - start_time
+
+                            ref = results["doc"]
+                            distance = "XXX"
+                            similarity = results["score"]
+
+                if dont_rerank :
                     start_time = timeit.default_timer()
                     results = mydb.retrieve(query=message, table_name=table_name)
                     time = timeit.default_timer() - start_time
-                except IndexError as ind :
-                    results = {'documents': [["[ Document ERROR ] : No relevant documents were found. Please check the document file. You may remove the document and upload a correct type of document."]]}
-                    time = "XXX"
-                    print(f"EROR at line 855 >>>> {ind}")
+
+                    ref = ((results['documents'])[0])[0]
+                    distance = ((results['distances'])[0])[0]
+                    similarity = "XXX"
 
                 answer = "XXX"
-                ref = ((results['documents'])[0])[0]
-                distance = ((results['distances'])[0])[0]
                 recent_llm_history = list()
 
             elif mode == 'CWD':
-                try :
+
+                dont_rerank = True
+                if len(switch)>=1 :
+                    for i in switch:
+                        if i == 1 :
+                            dont_rerank = False
+
+                            start_time = timeit.default_timer()
+                            results = mydb.retrieve_rerank(query=message, table_name=table_name)
+                            retrieve_time = timeit.default_timer() - start_time
+
+                            ref = results["doc"]
+                            distance = "XXX"
+                            similarity = results["score"]
+
+                if dont_rerank :
                     start_time = timeit.default_timer()
                     results = mydb.retrieve(query=message, table_name=table_name)
                     retrieve_time = timeit.default_timer() - start_time
-                except IndexError as ind :
-                    results = {'documents': [["[ Document ERROR ] : No relevant documents were found. Please check the document file. You may remove the document and upload a correct type of document."]]}
-                    retrieve_time = "XXX"
-                    print(f"EROR at line 870 >>>> {ind}")
 
-                ref = ((results['documents'])[0])[0]
-                distance = ((results['distances'])[0])[0]
+                    ref = ((results['documents'])[0])[0]
+                    distance = ((results['distances'])[0])[0]
+                    similarity = "XXX"
 
                 if (openai_valid != 'x') and (openai_valid is not None) :
                     prompt = f"""{message}
@@ -916,12 +943,14 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_vali
                     time = timeit.default_timer() - start_time
                     ref = "XXX"
                     distance = "XXX"
+                    similarity = "XXX"
 
                 elif (openai_valid == 'x') or (openai_valid is None) :
                     answer = "Please ensure that you have correctly filled in the OpenAI API."
                     ref = "XXX"
                     distance = "XXX"
                     time = "XXX"
+                    similarity = "XXX"
                     recent_llm_history = list()
 
         elif (huggingface_valid == 'x') or (chatbot_status != "The chatbot has already obtained the information from the documents.") :
@@ -943,11 +972,13 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_vali
                     time = timeit.default_timer() - start_time
                     ref = "XXX"
                     distance = "XXX"
+                    similarity = "XXX"
                 elif (openai_valid == 'x') or (openai_valid is None) :
                     answer = "Please ensure that you have correctly filled in the OpenAI API."
                     ref = "XXX"
                     distance = "XXX"
                     time = "XXX"
+                    similarity = "XXX"
                     recent_llm_history = list()
             else :
                 ## cannot response without api and table name
@@ -955,6 +986,7 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_vali
                 ref = "XXX"
                 distance = "XXX"
                 time = "XXX"
+                similarity = "XXX"
                 recent_llm_history = list()
         
         stacks['user'].append(message)
@@ -963,6 +995,7 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_vali
         stacks['distance'].append(distance)
         stacks['ref'].append(ref)
         stacks['mode'].append(mode)
+        stacks['rerank_similarity'].append(similarity)
 
         ms_process = html.P(
                             "number of questions : {A}".format(A=len(stacks['user'])),
@@ -971,7 +1004,7 @@ def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_vali
         return stacks, recent_llm_history, ms_process, ""
     
     elif clear_message :
-        stacks = {'user':[], 'chatbot':[], 'time':[], 'distance':[], 'ref':[], 'mode':[]}
+        stacks = {'user':[], 'chatbot':[], 'time':[], 'distance':[], 'ref':[], 'mode':[], 'rerank_similarity':[]}
         ms_process = html.P(
                             "number of questions : {A}".format(A=len(stacks['user'])),
                             style={'font-size':11}
@@ -996,7 +1029,7 @@ def update_chatbox(stacks, sent_ms, clear_ms):
     final_stacks = []
 
     if sent_ms or clear_ms :
-        for user,chatbot,time,distance,ref,mode in zip(stacks['user'],stacks['chatbot'],stacks['time'],stacks['distance'],stacks['ref'],stacks['mode']):
+        for user,chatbot,time,distance,ref,mode,rerank in zip(stacks['user'],stacks['chatbot'],stacks['time'],stacks['distance'],stacks['ref'],stacks['mode'],stacks['rerank_similarity']):
 
             chatbot_area = [html.Div("SATURDAY", className="badge rounded-pill bg-success")]
             user_area = [html.Div("USER", className="badge rounded-pill bg-info")]
@@ -1004,11 +1037,18 @@ def update_chatbox(stacks, sent_ms, clear_ms):
             if mode == "SD":
                 for i in ref.split("\n"):
                     chatbot_area.append(html.P(i))
-                chatbot_area.extend([
-                            html.Div("INFO", className="badge rounded-pill bg-light"),
-                            html.P(f"DISTANCE : {distance}"),
-                            html.P(f"RETRIEVAL TIME : {time}")
-                            ])
+                if rerank == "XXX":
+                    chatbot_area.extend([
+                                html.Div("INFO", className="badge rounded-pill bg-light"),
+                                html.P(f"DISTANCE : {distance}"),
+                                html.P(f"RETRIEVAL TIME : {time}")
+                                ])
+                elif distance == "XXX":
+                    chatbot_area.extend([
+                                html.Div("INFO", className="badge rounded-pill bg-light"),
+                                html.P(f"SIMILARITY SCORE : {rerank}"),
+                                html.P(f"RETRIEVAL TIME : {time}")
+                                ])
             elif mode == "CWD":
                 for i in chatbot.split("\n"):
                     chatbot_area.append(html.P(i))
