@@ -137,7 +137,7 @@ app.layout = dbc.Container([
             dbc.Checklist(
                             options=[
                                 {"label": "Rerank documents after retrieval", "value": 1},
-                                {"label": "Use embedding model by OpenAI", "value": 2, "disabled": True},
+                                {"label": "Add semantic word to the question for LAWDocument searching", "value": 2, "disabled": True},
                             ],
                             value=[],
                             id="switch",

@@ -126,3 +126,17 @@ class vectordb_start():
         else :
             print("\nThe number of results has exceeded the maximum limit.\n")
             raise ValueError
+
+# def retrieve_rerank_by_adding_query(self, query, table_name, n_results = 30) -> dict:
+#         collection = self.db.get_or_create_collection(name=table_name, embedding_function=self.huggingface_ef)
+#         current_data = collection.count()
+
+#         while (n_results >= current_data) :
+#             n_results -= 2
+
+#         if (n_results <= current_data) :
+#             results = collection.query(
+#                                         query_texts=query,
+#                                         n_results=n_results
+#                                     )
+#             docs = ((results['documents'])[0])[:n_results]
