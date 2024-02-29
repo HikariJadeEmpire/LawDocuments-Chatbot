@@ -97,6 +97,7 @@ app.layout = dbc.Container([
                             size="sm",
                             className="form-control is-invalid",
                             placeholder="Your OpenAI API",
+                            disabled=True
                         ),
                     ]
                     ),
@@ -137,7 +138,7 @@ app.layout = dbc.Container([
             dbc.Checklist(
                             options=[
                                 {"label": "Rerank documents after retrieval", "value": 1},
-                                {"label": "Add semantic word to the question for LAWDocument searching", "value": 2, "disabled": True},
+                                {"label": "Add semantic word to the question", "value": 2, "disabled": True},
                             ],
                             value=[],
                             id="switch",
@@ -707,6 +708,18 @@ def chatbot_status_update(doc_status, huggingface_valid, table_name):
     
     else :
         return dash.no_update, dash.no_update
+
+@app.callback(
+        Output("openai-api","disabled"),
+
+        Input('mode', 'value'),
+
+)
+def openai_mode(mode):
+    if (mode != 'SD') and (mode != 'CWOD') :
+        return False
+    else :
+        return True
 
 @app.callback(
         Output("docs-remove-status","children"),
