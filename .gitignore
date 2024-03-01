@@ -2,11 +2,9 @@
 app/.env
 app/.DS_Store
 app/__pycache__
-app/test.ipynb
 
 docs_storage
 vectors_db
 
 .DS_Store
-
-app/test.ipynb
+test.ipynb
