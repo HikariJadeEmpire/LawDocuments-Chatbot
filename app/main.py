@@ -14,8 +14,19 @@ import m_vector_db, LLM
 main_path = Path("main.py").parent
 docs_path = Path(main_path,"..","docs_storage")
 
-# embed_model = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
-embed_model = 'intfloat/multilingual-e5-large'
+model_select = dbc.Select(
+    id="select-embeddings-model",
+    placeholder="select embedding models",
+    options=[
+        {"label": "multilingual-e5-base", "value": "intfloat/multilingual-e5-base"},
+        {"label": "paraphrase-multilingual-mpnet-base-v2", "value": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"},
+        {"label": "simcse-model-phayathaibert", "value": "kornwtp/simcse-model-phayathaibert"},
+        {"label": "others", "value": "None", "disabled": True},
+    ],
+    value="intfloat/multilingual-e5-base",
+    size="sm",
+    style={"width":"30px"}
+)
 
 app = Dash(
     title='DocsChat',
@@ -235,6 +246,13 @@ app.layout = dbc.Container([
                                             n_clicks=0,
                                             className="nav-link",
                                             ),
+                                dbc.NavLink("Recommendations",
+                                            id="app-rec",
+                                            active=True,
+                                            href="/",
+                                            n_clicks=0,
+                                            className="nav-link",
+                                            ),
                                 dbc.NavLink("Huggingface API info",
                                             id="open-hug",
                                             active=True,
@@ -263,6 +281,7 @@ app.layout = dbc.Container([
                                             n_clicks=0,
                                             className="nav-link",
                                             ),
+                                model_select,
                             ],
                             style={
                                 'font-size':12,
@@ -304,12 +323,48 @@ app.layout = dbc.Container([
                             ),
                     dbc.Popover(
                                 [
+                                    dbc.PopoverHeader("Recommendations"),
+                                    dbc.PopoverBody("If you don't know how to start"),
+                                    dbc.PopoverBody(
+                                        "you need to know that we use 2 AI models.",
+                                         style={'font-size':11},
+                                                    ),
+                                    dbc.PopoverBody(
+                                        "the first one is LLMs, the second one is embeddings model",
+                                         style={'font-size':11},
+                                                    ),
+                                    dbc.PopoverBody(
+                                        "You can choose the embeddings model yourself on the far right.",
+                                         style={'font-size':12},
+                                                    ),
+                                    dbc.PopoverBody("I recommend to use embeddings model name : multilingual-e5"),
+                                    dbc.PopoverBody(
+                                        "For free use, choose the \"Search for documents\" mode and get yourself a Hugging Face API.",
+                                         style={'font-size':11},
+                                                    ),
+                                ],
+                                id="popover-rec",
+                                is_open=False,
+                                placement="right",
+                                target="app-rec",
+                            ),
+                    dbc.Popover(
+                                [
                                     dbc.PopoverHeader("Embeddings"),
-                                    dbc.PopoverBody(embed_model),
+                                    dbc.PopoverBody("intfloat/multilingual-e5-base", id="embed-name"),
                                     dbc.PopoverBody(
                                         "model is utilized for document retrieval purposes.",
                                         style={'font-size':12},
                                                     ),
+                                    dcc.Link(   
+                                            children="model reference",
+                                            href="https://huggingface.co/spaces/mteb/leaderboard",
+                                            className="btn btn-link",
+                                            refresh=True,
+                                            style = {
+                                                'font-size': 12
+                                                }
+                                            )
                                 ],
                                 id="popover",
                                 is_open=False,
@@ -551,6 +606,16 @@ def toggle_popover_fresh_start(n, is_open):
     return is_open
 
 @app.callback(
+    Output("popover-rec", "is_open"),
+    [Input("app-rec", "n_clicks")],
+    [State("popover-rec", "is_open")],
+)
+def toggle_popover_rec(n, is_open):
+    if n:
+        return not is_open
+    return is_open
+
+@app.callback(
     Output("popover-huggingface", "is_open"),
     [Input("open-hug", "n_clicks")],
     [State("popover-huggingface", "is_open")],
@@ -589,6 +654,13 @@ def toggle_popover_llm(n, is_open):
     if n:
         return not is_open
     return is_open
+
+@app.callback(
+    Output("embed-name", "children"),
+    [Input("select-embeddings-model", "value")],
+)
+def toggle_popover_llm(embed_model):
+    return embed_model
 
 ########################################################
 
@@ -640,16 +712,17 @@ def openai_api_check(openai_api):
         Output("status","children"),
         Output("current-table-name","data"),
 
+        Input("select-embeddings-model","value"),
         Input("docs-load-status", "children"),
         Input("huggingface-api-store","data"),
 
         State("current-table-name","data"),
 )
-def chatbot_status_update(doc_status, huggingface_valid, table_name):
+def chatbot_status_update(embed_model, doc_status, huggingface_valid, table_name):
     doc_check = os.listdir(docs_path)
     t_name = [f"Table-{i}" for i in range(999)]
     if doc_status == "Your documents has been uploaded" and (huggingface_valid is not None) :
-        print(f"[ line 640 ] everything looks fine , current table_name on mem : {table_name}")
+        print(f"\n[ line 674 ] everything looks fine , current table_name on mem : {table_name}")
         if (len(doc_check) >= 1) and (huggingface_valid != 'x'):
 
             mydb = m_vector_db.vectordb_start(huggingface_api_key=huggingface_valid, embed_model_name=embed_model)
@@ -668,7 +741,7 @@ def chatbot_status_update(doc_status, huggingface_valid, table_name):
                    },
                    )
         elif (len(doc_check) < 1) and (huggingface_valid != 'x') :
-            text = html.P("[ RECEIVING DOCUMENTS ERROR , line 656 ] : It seems like your documents haven't been collected. Please check your huggingface API",
+            text = html.P("[ RECEIVING DOCUMENTS ERROR , line 693 ] : It seems like your documents haven't been collected. Please check your huggingface API",
                     className="text-danger",
                             style={
                                 'textAlign': 'center',
@@ -697,7 +770,7 @@ def chatbot_status_update(doc_status, huggingface_valid, table_name):
                    },
                    )
         else :
-            text = html.P("[ RECEIVING DOCUMENTS ERROR , line 696 ] : It seems like your documents have been collected.",
+            text = html.P("[ RECEIVING DOCUMENTS ERROR , line 722 ] : It seems like your documents have been collected.",
                           className="text-danger",
                             style={
                                 'textAlign': 'center',
@@ -716,7 +789,7 @@ def chatbot_status_update(doc_status, huggingface_valid, table_name):
 
 )
 def openai_mode(mode):
-    if (mode != 'SD') and (mode != 'CWOD') :
+    if (mode != 'SD') :
         return False
     else :
         return True
@@ -726,13 +799,14 @@ def openai_mode(mode):
         Output('remove-docs', 'n_clicks'),
         Output('doc-dump','clear_data'),
 
+        Input("select-embeddings-model","value"),
         Input("huggingface-api-store","data"),
         Input('remove-docs', 'n_clicks'),
 
         State('doc-dump', 'data'),
         State("current-table-name","data"),
 )
-def remove_docs(huggingface_valid, click, upload, table_name):
+def remove_docs(embed_model, huggingface_valid, click, upload, table_name):
     status = None
     reset = False
     doc_check = os.listdir(docs_path)
@@ -740,9 +814,9 @@ def remove_docs(huggingface_valid, click, upload, table_name):
     if (huggingface_valid != 'x') and (table_name is not None) :
         mydb = m_vector_db.vectordb_start(huggingface_api_key=huggingface_valid, embed_model_name=embed_model)
         mydb.remove_db(table_name=table_name)
-        print("\nThe vector database has been successfully removed.")
+        print("[ remove_docs ] The vector database has been successfully removed.")
     else :
-        print("\nPlease remove \"vectors_db\" folder by yourself.\n")
+        print("[ remove_docs ] Please remove \"vectors_db\" folder by yourself.")
 
     if (click >= 1) and ((upload == "uploaded") or (upload is None)) :
         for  i in doc_check :
@@ -751,7 +825,7 @@ def remove_docs(huggingface_valid, click, upload, table_name):
 
         doc_check = os.listdir(docs_path)
         if (len(doc_check) < 1) :
-            print("All documents successfully removed.")
+            print("[ remove_docs ] All documents successfully removed.\n")
         reset = True
     
     click = 0
@@ -829,6 +903,7 @@ def upload_status(mode, rm_click, docdump):
     Output('ms-type', 'value'),
 
     [
+        Input("select-embeddings-model","value"),
         Input('mode', 'value'),
         Input('ms-sent', 'n_clicks'),
         Input('ms-clear', 'n_clicks'),
@@ -844,7 +919,7 @@ def upload_status(mode, rm_click, docdump):
      ],
      prevent_initial_call=True
 )
-def chatbox(mode, confirm_message, clear_message, huggingface_valid, openai_valid, table_name, chatbot_status, stack, llm_history, switch, message):
+def chatbox(embed_model, mode, confirm_message, clear_message, huggingface_valid, openai_valid, table_name, chatbot_status, stack, llm_history, switch, message):
 
     if stack is None:
         stacks = {'user':[], 'chatbot':[], 'time':[], 'distance':[], 'ref':[], 'mode':[], 'rerank_similarity':[]}
