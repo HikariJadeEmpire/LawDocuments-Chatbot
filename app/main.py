@@ -212,9 +212,9 @@ app.layout = dbc.Container([
                             ),
                         html.Br(),
                         html.Small(children=None,
-                                        id='docs-remove-status'
-                                        )
-                        ],
+                                    id='docs-remove-status'
+                                    ),
+                    ],
                     style={
                             'font-size':11,
                             'textAlign': 'center',
@@ -337,7 +337,7 @@ app.layout = dbc.Container([
                                         "You can choose the embeddings model yourself on the far right.",
                                          style={'font-size':12},
                                                     ),
-                                    dbc.PopoverBody("I recommend to use embeddings model name : multilingual-e5"),
+                                    dbc.PopoverBody("I recommend to use embeddings model name : \"multilingual-e5\" and Upload just one document for the best performance"),
                                     dbc.PopoverBody(
                                         "For free use, choose the \"Search for documents\" mode and get yourself a Hugging Face API.",
                                          style={'font-size':11},
@@ -997,10 +997,10 @@ def chatbox(embed_model, mode, confirm_message, clear_message, huggingface_valid
                     cb = LLM.start_llm(openai_api_key=openai_valid)
                     cb_message = {'role':'user', 'content':prompt}
 
-                    if (len(llm_history) > 0) or (llm_history is not None) :
-                        llm_history.append(cb_message)
-                    else :
+                    if (llm_history is None) :
                         llm_history = [cb_message]
+                    else :
+                        llm_history.append(cb_message)
 
                     recent_llm_history = llm_history
                     
