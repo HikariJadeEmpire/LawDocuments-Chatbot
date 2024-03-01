@@ -12,7 +12,7 @@ Overall
 ## Usage
 
 - clone this repo
-- set current directory to ```this_repo/app```
+- set current directory to ```this_repo```
 - run ```docker build -t docchat:0 .```
 - run ```docker run --name docchat -d -p 8080:8080 docchat:0```
 - open your browser and type ```localhost:8080```

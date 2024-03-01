@@ -1,0 +1,15 @@
+dash==2.10.2
+plotly==5.9.0
+dash-bootstrap-components
+chromadb==0.4.24
+langchain==0.1.9
+torch==2.2.1
+pymupdf==1.23.26
+pypdf==4.0.2
+jq==1.6.0
+docx2txt==0.8
+tiktoken==0.6.0
+requests==2.31.0
+fixthaipdf==0.2.1
+openai==1.12.0
+sentence_transformers==2.3.1
