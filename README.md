@@ -1,5 +1,5 @@
 # LawDocuments-Chatbot
-> Detail
+> A multilingual chatbot that can learn from documents.
 
 # <h3>Preview</h3>
 
@@ -8,6 +8,16 @@
 Overall
 
 <br>
+
+## Details
+
+- vector database : ```chromadb```
+- Chatbot (algorithm) : ```OpenAI ChatGPT 3.5```
+- Embedding model : ```vary```
+- Support languages : ```Depends on model```
+
+**note** : Everyone can use this repository as a starter kit to build yourself a chatbot with ability to learn from documents. With chatbot algorithm 
+, it does not necessary to be ```OpenAI ChatGPT 3.5```. You can customize it by yourself if your PC or any of your devices can handle a local LLM. By the way, this is free to use and safer for privacy use.
 
 ## Usage
 
