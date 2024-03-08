@@ -2,6 +2,7 @@ import os, shutil
 import chromadb
 import chromadb.utils.embedding_functions as embedding_functions
 from sentence_transformers import SentenceTransformer, util
+from pythainlp.tokenize import sent_tokenize, word_tokenize
 
 from pathlib import Path
 
@@ -84,6 +85,23 @@ class vectordb_start():
         results = collection.query(
                                         query_texts=query,
                                         n_results=n_results
+                                    )
+
+        return results
+    
+    def retrieve_by_keyword(self, query, table_name, n_results = 5) -> dict :
+        collection = self.db.get_or_create_collection(name=table_name, embedding_function=self.huggingface_ef)
+        ### attucut >> Tokenization >> some_token : list()
+        some_token = word_tokenize(text=query,engine='attacut')
+        
+        keyw = {"$or":[]}
+        for i in some_token:
+            keyw["$or"].append({"$contains":i})
+        
+        results = collection.query(
+                                        query_texts=query,
+                                        n_results=n_results,
+                                        where=keyw
                                     )
 
         return results
