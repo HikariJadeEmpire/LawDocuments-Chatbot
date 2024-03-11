@@ -13,5 +13,6 @@ requests==2.31.0
 fixthaipdf==0.2.1
 openai==1.12.0
 sentence_transformers==2.3.1
-pythainlp
-attacut
+pythainlp==5.0.1
+attacut==1.0.6
+rank-bm25==0.2.2

@@ -1,6 +1,7 @@
 import os, shutil
 import chromadb
 import chromadb.utils.embedding_functions as embedding_functions
+from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer, util
 from pythainlp.tokenize import sent_tokenize, word_tokenize
 
@@ -14,7 +15,10 @@ class vectordb_start():
         self.db_path = Path(self.main_path,"..")
         self.docs_path = Path(self.main_path,"..","docs_storage")
 
-        self.db = chromadb.PersistentClient(path=os.path.join(self.db_path,"vectors_db/"))
+        self.db = chromadb.PersistentClient(
+            path=os.path.join(self.db_path,"vectors_db/"),
+            settings=Settings(allow_reset=True)
+                                            )
         self.huggingface_ef = embedding_functions.HuggingFaceEmbeddingFunction(
                                                 api_key=huggingface_api_key,
                                                 model_name=embed_model_name
@@ -99,7 +103,7 @@ class vectordb_start():
             keyw["$or"].append({"$contains":i})
         
         results = collection.query(
-                                        query_texts=query,
+                                        query_texts=some_token,
                                         n_results=n_results,
                                         where=keyw
                                     )
