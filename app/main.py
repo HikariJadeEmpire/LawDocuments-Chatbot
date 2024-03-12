@@ -950,7 +950,7 @@ def chatbox(embed_model, mode, confirm_message, clear_message, huggingface_valid
                             distance = "XXX"
                             similarity = results["score"]
 
-                if dont_rerank :
+                elif (dont_rerank==True) and (len(switch)<1) :
                     start_time = timeit.default_timer()
                     results = mydb.retrieve(query=message, table_name=table_name)
                     time = timeit.default_timer() - start_time
@@ -978,7 +978,7 @@ def chatbox(embed_model, mode, confirm_message, clear_message, huggingface_valid
                             distance = "XXX"
                             similarity = results["score"]
 
-                if dont_rerank :
+                elif (dont_rerank==True) and (len(switch)<1):
                     start_time = timeit.default_timer()
                     results = mydb.retrieve(query=message, table_name=table_name)
                     retrieve_time = timeit.default_timer() - start_time
