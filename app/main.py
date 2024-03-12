@@ -148,8 +148,8 @@ app.layout = dbc.Container([
             html.Br(), html.Br(),
             dbc.Checklist(
                             options=[
-                                {"label": "Rerank documents after retrieval", "value": 1},
-                                {"label": "Add semantic word to the question", "value": 2, "disabled": True},
+                                {"label": "Use hybrid search documents", "value": 1},
+                                {"label": "Use only keyword search", "value": 2, "disabled": True},
                             ],
                             value=[],
                             id="switch",

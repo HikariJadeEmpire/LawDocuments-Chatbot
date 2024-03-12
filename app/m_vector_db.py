@@ -4,6 +4,7 @@ import chromadb.utils.embedding_functions as embedding_functions
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer, util
 from pythainlp.tokenize import sent_tokenize, word_tokenize
+from rank_bm25 import BM25Okapi
 
 from pathlib import Path
 
@@ -122,31 +123,17 @@ class vectordb_start():
                                         query_texts=query,
                                         n_results=n_results
                                     )
-            docs = ((results['documents'])[0])[:n_results]
+            docs = (results['documents'])[0]
 
             # Compute embedding for both lists
-            question = self.embed_model.encode([query], convert_to_tensor=True)
-            docs_vector = self.embed_model.encode(docs, convert_to_tensor=True)
+            tokenized_corpus = [word_tokenize(text=docs[i],engine='attacut') for i in range(len(docs))]
+            bm25 = BM25Okapi(tokenized_corpus)
 
-            # Compute cosine-similarities
-            cosine_scores = util.cos_sim(question, docs_vector)
+            tokenized_query = word_tokenize(text=query,engine='attacut')
+            doc_scores = bm25.get_scores(tokenized_query)
+            rs = bm25.get_top_n(tokenized_query, docs, n=1)
 
-            # Output the pairs with their score
-            see = {'q':[], 'a':[], 'score':[]}
-            for i in range(len(question)):
-                for j in range(len(docs_vector)):
-                    see['q'].append(query)
-                    see['a'].append(docs[j])
-                    see['score'].append( float(cosine_scores[i][j]) )
-
-            # Get the most relevant doc
-            
-            for i in see['score']:
-                if i == float(cosine_scores.max()):
-                    retrieve_doc = see['score'].index(i)
-            most_relevant_doc = (see['a'])[retrieve_doc]
-
-            results = {'doc':most_relevant_doc, 'score':float(cosine_scores.max())}
+            results = {'doc':rs[0], 'score':float(doc_scores.max())}
 
             return results
         else :
