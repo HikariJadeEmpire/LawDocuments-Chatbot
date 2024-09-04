@@ -1,6 +1,12 @@
 # LawDocuments-Chatbot
 > A multilingual chatbot that can learn from documents.
 
+# <h3>Paper</h3>
+
+| Paper | Language | File |
+|---|---|---|
+| Large language models (LLMs) with RAG technique | Thai (70%), English (30%) | [ Details ](https://github.com/HikariJadeEmpire/LawDocuments-Chatbot/blob/main/6510412003_Punnathorn_IS_Report.pdf) |
+
 # <h3>Preview</h3>
 
 <img width="952" alt="image" src="https://github.com/HikariJadeEmpire/LawDocuments-Chatbot/assets/118663358/c4ba0d4c-3891-43fa-99a1-7cfd042b2639">
